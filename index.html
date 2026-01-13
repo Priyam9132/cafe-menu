@@ -160,6 +160,28 @@ header .content{position:relative;z-index:1}
   border:none;border-radius:12px;
 }
 .order-id{font-size:13px;color:var(--muted)}
+
+/* TOAST */
+.toast{
+  position:fixed;
+  bottom:160px;
+  left:50%;
+  transform:translateX(-50%) translateY(20px);
+  background:var(--card);
+  color:var(--text);
+  padding:12px 18px;
+  border-radius:12px;
+  box-shadow:0 8px 20px rgba(0,0,0,.25);
+  font-size:14px;
+  opacity:0;
+  pointer-events:none;
+  transition:.3s ease;
+  z-index:2000;
+}
+.toast.show{
+  opacity:1;
+  transform:translateX(-50%) translateY(0);
+}
 </style>
 </head>
 
@@ -181,7 +203,6 @@ header .content{position:relative;z-index:1}
 
 <div class="menu">
 
-<!-- COFFEE -->
 <div class="section" id="coffee">
 <h2>Coffee</h2>
 <div class="item"><img src="espresso.png"><div class="info"><b>Espresso</b><div class="desc">Strong & rich</div></div><div><div class="price">₹120</div><button class="add" onclick="addItem('Espresso')">+ Add</button></div></div>
@@ -189,14 +210,12 @@ header .content{position:relative;z-index:1}
 <div class="item"><img src="latte.png"><div class="info"><b>Cafe Latte</b><div class="desc">Smooth & creamy</div></div><div><div class="price">₹170</div><button class="add" onclick="addItem('Cafe Latte')">+ Add</button></div></div>
 </div>
 
-<!-- COLD -->
 <div class="section" id="cold">
 <h2>Cold</h2>
 <div class="item"><img src="cold-coffee.png"><div class="info"><b>Cold Coffee</b><div class="desc">Chilled</div></div><div><div class="price">₹150</div><button class="add" onclick="addItem('Cold Coffee')">+ Add</button></div></div>
 <div class="item"><img src="iced-latte.png"><div class="info"><b>Iced Latte</b><div class="desc">Milk & ice</div></div><div><div class="price">₹180</div><button class="add" onclick="addItem('Iced Latte')">+ Add</button></div></div>
 </div>
 
-<!-- SNACKS -->
 <div class="section" id="snacks">
 <h2>Snacks</h2>
 <div class="item"><img src="sandwich.png"><div class="info"><b>Veg Sandwich</b><div class="desc">Fresh veggies</div></div><div><div class="price">₹140</div><button class="add" onclick="addItem('Veg Sandwich')">+ Add</button></div></div>
@@ -223,8 +242,9 @@ header .content{position:relative;z-index:1}
   <button class="whatsapp" onclick="orderWhatsApp()">Order on WhatsApp</button>
 </div>
 
+<div id="toast" class="toast"></div>
+
 <script>
-/* ===== DOM ===== */
 const cart=document.getElementById("cart");
 const backdrop=document.getElementById("backdrop");
 const cartBtn=document.getElementById("cartBtn");
@@ -234,14 +254,13 @@ const cartCount=document.getElementById("cartCount");
 const tableInfo=document.getElementById("tableInfo");
 const orderIdEl=document.getElementById("orderId");
 const darkBtn=document.getElementById("darkBtn");
+const toast=document.getElementById("toast");
 
-/* ===== TABLE ===== */
 const params=new URLSearchParams(location.search);
 const tableNo=params.get("table")||"—";
 const tableRef=`T${tableNo}-${Math.random().toString(36).slice(2,5).toUpperCase()}`;
 tableInfo.textContent=`Table No: ${tableNo} | Ref: ${tableRef}`;
 
-/* ===== DARK MODE ===== */
 function setDark(v){
   document.body.classList.toggle("dark",v);
   darkBtn.textContent=v?"☀️":"🌙";
@@ -250,7 +269,6 @@ function setDark(v){
 darkBtn.onclick=()=>setDark(!document.body.classList.contains("dark"));
 if(localStorage.getItem("dark")==="true") setDark(true);
 
-/* ===== CART ===== */
 const MENU={
   "Espresso":120,"Cappuccino":160,"Cafe Latte":170,
   "Cold Coffee":150,"Iced Latte":180,
@@ -258,15 +276,25 @@ const MENU={
 };
 let cartData={};
 
+function showToast(text){
+  toast.textContent="✅ "+text+" added to cart";
+  toast.classList.add("show");
+  clearTimeout(window.toastTimer);
+  window.toastTimer=setTimeout(()=>toast.classList.remove("show"),1500);
+}
+
 function addItem(n){
   cartData[n]?cartData[n].qty++:cartData[n]={qty:1};
   renderCart();
+  showToast(n);
 }
+
 function changeQty(n,d){
   cartData[n].qty+=d;
   if(cartData[n].qty<=0) delete cartData[n];
   renderCart();
 }
+
 function renderCart(){
   let t=0,c=0;
   cartItems.innerHTML="";
@@ -286,7 +314,6 @@ function renderCart(){
   cartCount.textContent=c;
 }
 
-/* CART OPEN/CLOSE */
 function openCart(){
   cart.classList.add("show");
   backdrop.classList.add("show");
@@ -298,9 +325,9 @@ function closeCart(){
   cartBtn.style.display="block";
 }
 
-/* WHATSAPP */
 let orderId="CA"+Date.now().toString().slice(-6);
 orderIdEl.textContent="Order ID: "+orderId;
+
 function orderWhatsApp(){
   if(!Object.keys(cartData).length){alert("Cart empty");return;}
   let msg=`Order ID: ${orderId}\nTable No: ${tableNo}\nRef: ${tableRef}\n`;
@@ -313,50 +340,32 @@ function orderWhatsApp(){
   window.open("https://wa.me/8619175141?text="+encodeURIComponent(msg),"_blank");
 }
 
-/* ===== ACTIVE NAV (CLICK PRIORITY – FINAL) ===== */
+/* ACTIVE NAV */
 const navButtons=[...document.querySelectorAll(".nav button")];
 const sections=[...document.querySelectorAll(".section")];
 const navHeight=document.querySelector(".nav").offsetHeight;
-
 let clickLock=false;
 
-/* CLICK */
 navButtons.forEach(btn=>{
-  btn.addEventListener("click",()=>{
-    const target=document.getElementById(btn.dataset.target);
-
+  btn.onclick=()=>{
     clickLock=true;
-
     navButtons.forEach(b=>b.classList.remove("active"));
     btn.classList.add("active");
-
-    window.scrollTo({
-      top:target.offsetTop-navHeight,
-      behavior:"smooth"
-    });
-
+    document.getElementById(btn.dataset.target)
+      .scrollIntoView({behavior:"smooth",block:"start"});
     setTimeout(()=>clickLock=false,700);
-  });
+  };
 });
 
-/* SCROLL */
 window.addEventListener("scroll",()=>{
   if(clickLock) return;
-
-  let current=null;
   sections.forEach(sec=>{
-    const top=sec.offsetTop-navHeight-5;
+    const top=sec.offsetTop-navHeight-10;
     const bottom=top+sec.offsetHeight;
-    if(window.scrollY>=top && window.scrollY<bottom){
-      current=sec.id;
+    if(scrollY>=top && scrollY<bottom){
+      navButtons.forEach(b=>b.classList.toggle("active",b.dataset.target===sec.id));
     }
   });
-
-  if(current){
-    navButtons.forEach(btn=>{
-      btn.classList.toggle("active",btn.dataset.target===current);
-    });
-  }
 });
 </script>
 
